@@ -1,0 +1,6 @@
+telethon
+python-telegram-bot>=20.0
+requests
+pillow
+colorama
+flask

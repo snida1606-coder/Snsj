@@ -1966,7 +1966,7 @@ class SMZXBot:
         st = get_state(uid)
         self.market_type = st.market_type
         self.pairs = st.pairs if st.pairs else DEFAULT_OTC_PAIRS.copy()
-        self.base_url = "https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={}&interval=1m&limit=600:qx_vzwz3wsu54chx8zmxpt0vp1yfk9gkxv0"
+        self.base_url = "https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={}&interval=1m&limit=600:qx_fxbd1pmgumxe8xo8j9mgz8nbeiabq3p3"
         self.telegram_format = st.telegram_format
         self.strategy = st.strategy
         self.strategy2_filters = st.strategy2_filters if st.strategy2_filters else Strategy2Filters()
@@ -2619,7 +2619,7 @@ def process_trend_filter(uid, signals_text):
         date_str = (datetime.now(timezone.utc) + timedelta(hours=5)).strftime("%Y-%m-%d")
 
         pair_api = pair.replace("_", "-") + "q"
-        url = f"https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={pair_api}&interval=1m&limit=2000:qx_vzwz3wsu54chx8zmxpt0vp1yfk9gkxv0"
+        url = f"https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={pair_api}&interval=1m&limit=2000:qx_fxbd1pmgumxe8xo8j9mgz8nbeiabq3p3"
         try:
             r = requests.get(url, timeout=10)
             if r.status_code != 200:
@@ -2731,7 +2731,7 @@ def format_signals_with_template(original_lines, template):
 def fetch_payout_live(pair):
     """Return the payout percentage from the live trading API for a given pair."""
     pair_api = pair.replace("_", "-") + "q"
-    url = f"https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={pair_api}&interval=1m&limit=1:qx_vzwz3wsu54chx8zmxpt0vp1yfk9gkxv0"
+    url = f"https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={pair_api}&interval=1m&limit=1:qx_fxbd1pmgumxe8xo8j9mgz8nbeiabq3p3"
     try:
         r = requests.get(url, timeout=10)
         if r.status_code == 200:
@@ -2769,7 +2769,7 @@ def run_pair_payout(uid, context):
 def get_trend_from_candles(pair):
     """Return 'up', 'down', 'sideways', or None if no data."""
     pair_api = pair.replace("_", "-") + "q"
-    url = f"https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={pair_api}&interval=1m&limit=180:qx_vzwz3wsu54chx8zmxpt0vp1yfk9gkxv0"
+    url = f"https://ikszeynptbmwkaaldfad.supabase.co/functions/v1/quotex-proxy?symbol={pair_api}&interval=1m&limit=180:qx_fxbd1pmgumxe8xo8j9mgz8nbeiabq3p3"
     try:
         r = requests.get(url, timeout=10)
         if r.status_code == 200:

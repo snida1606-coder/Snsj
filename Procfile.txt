@@ -1,1 +1,1 @@
-web: python aimode2.py
+web: python aimode3.py

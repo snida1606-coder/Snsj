@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ["WEB_CONCURRENCY"] = "1"
 import asyncio, json, os, signal, sys, time, base64, hashlib, socket, uuid, threading, math, re
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
@@ -61,7 +63,8 @@ threading.Thread(target=run_uptime_server, daemon=True).start()
 BOT_TOKEN = "7623409497:AAECia8u02Vwj4QOdBweRDwMlihn3n3RW38"
 SUPABASE_URL = "https://jklibjyjzimcjlpvskvw.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbGlianlqemltY2pscHZza3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTE0NzEsImV4cCI6MjA4OTY4NzQ3MX0.aPMtnplXCpMenfdpDAPFcdMd4ccptM2L3C5oCWWC4X4"
-GEMINI_API_KEY = "AIzaSyBUzDqdxNvaIxIkr7PO7jNkU6PEuKW5j-k"
+import os
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyA-aWa7bw6Ea6C1sZoNT5TiSPfJKE0IKxc")
 
 def is_authorized(uid: int) -> bool:
     headers = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}", "Content-Type": "application/json"}

@@ -70,13 +70,13 @@ import google.generativeai as genai
 logger = logging.getLogger(__name__)
 
 # Code ke shuru mein is tarah update karein:
-raw_api_key = os.getenv("GEMINI_API_KEY")  # Yahan _KEY add kar diya
+raw_api_key = os.getenv("GEMINI_API")  # Yahan _KEY add kar diya
 GEMINI_API_KEY = raw_api_key.strip() if raw_api_key else None
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 else:
-    logger.error("GEMINI_API_KEY environment variable not set.")
+    logger.error("GEMINI_API environment variable not set.")
     
 
 def is_authorized(uid: int) -> bool:

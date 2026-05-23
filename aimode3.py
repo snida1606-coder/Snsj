@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from telethon import TelegramClient, Button
 from telethon.tl.types import MessageEntityCustomEmoji as TelethonCustomEmoji, MessageEntityBold as TelethonBold
 
-# --- Telegram Bot API Imports (Manual Compatibility Layer) ---
+# --- Telegram Bot API Imports (Manual Compatibility Layer) --
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
     MessageEntity
@@ -63,12 +63,21 @@ threading.Thread(target=run_uptime_server, daemon=True).start()
 BOT_TOKEN = "7623409497:AAECia8u02Vwj4QOdBweRDwMlihn3n3RW38"
 SUPABASE_URL = "https://jklibjyjzimcjlpvskvw.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbGlianlqemltY2pscHZza3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTE0NzEsImV4cCI6MjA4OTY4NzQ3MX0.aPMtnplXCpMenfdpDAPFcdMd4ccptM2L3C5oCWWC4X4"
-import google.generativeai as genai
 import os
+import logging
+import google.generativeai as genai
 
-# Use environment variable if set, otherwise fallback to your hardcoded key
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyBUzDqdxNvaIxIkr7PO7jNkU6PEuKW5j-k")
-genai.configure(api_key=GEMINI_API_KEY)
+logger = logging.getLogger(__name__)
+
+# Code ke shuru mein is tarah update karein:
+raw_api_key = os.getenv("GEMINI_API_KEY")  # Yahan _KEY add kar diya
+GEMINI_API_KEY = raw_api_key.strip() if raw_api_key else None
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    logger.error("GEMINI_API_KEY environment variable not set.")
+    
 
 def is_authorized(uid: int) -> bool:
     headers = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}", "Content-Type": "application/json"}

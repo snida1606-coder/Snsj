@@ -2669,42 +2669,17 @@ async def s6_candles_received(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # ══════════════ AI AUTO ANALYSIS (Gemini Vision via REST API) ══════════════
 def analyze_chart_with_gemini_rest(image_path):
-    """Send image to Gemini using direct REST API with fallback."""
-    import json
-    import re
-    import base64
-    import requests
+    import json, re, base64, requests, os
     
-    # Try multiple models in order
-    models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash", 
-        "gemini-1.5-flash"
-    ]
-    
-    # Get API key from environment variable (safer for Render)
-    api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY)  # fallback to hardcoded
+    models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
+    api_key = os.environ.get("GEMINI_API_KEY", "AIzaSyBUzDqdxNvaIxIkr7PO7jNkU6PEuKW5j-k")
     
     for model in models:
         try:
             with open(image_path, "rb") as f:
                 image_data = base64.b64encode(f.read()).decode("utf-8")
             
-            prompt = """You are a professional algorithmic trader analyzing a 1-minute candlestick chart for OTC trading.
-
-Analyze the screenshot and return EXACT JSON:
-{
-  "direction": "CALL" or "PUT",
-  "confidence": 0-100,
-  "support": number or null,
-  "resistance": number or null,
-  "reason": "short reason",
-  "pattern": "detected pattern",
-  "pair": "symbol_OTC",
-  "chart_time": "HH:MM"
-}
-
-Return ONLY valid JSON. If chart unclear, return {"error": "Invalid image"}"""
+            prompt = "You are a trader. Analyze this candlestick chart. Return EXACT JSON: {\"direction\":\"CALL/PUT\", \"confidence\":0-100, \"support\":number or null, \"resistance\":number or null, \"reason\":\"short\", \"pattern\":\"pattern name\", \"pair\":\"SYMBOL_OTC\", \"chart_time\":\"HH:MM\"} RETURN ONLY JSON."
             
             url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={api_key}"
             payload = {
@@ -2719,33 +2694,21 @@ Return ONLY valid JSON. If chart unclear, return {"error": "Invalid image"}"""
             response = requests.post(url, json=payload, headers=headers, timeout=30)
             result = response.json()
             
-            # Check for errors
             if "error" in result:
-                print(f"Gemini API error with {model}: {result['error']}")
+                print(f"Model {model} error: {result['error'].get('message', 'unknown')}")
                 continue
-            
-            # Extract text
-            text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-            if not text:
-                print(f"No text from {model}")
-                continue
-            
-            # Parse JSON
-            json_match = re.search(r'\{.*\}', text, re.DOTALL)
-            if json_match:
-                parsed = json.loads(json_match.group())
-                # If successful, return
-                if "direction" in parsed:
-                    print(f"Success with model: {model}")
-                    return parsed
-            else:
-                print(f"No JSON found in response from {model}")
                 
+            text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+            if text:
+                json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                if json_match:
+                    parsed = json.loads(json_match.group())
+                    if "direction" in parsed:
+                        return parsed
         except Exception as e:
-            print(f"Model {model} failed: {e}")
+            print(f"Model {model} exception: {e}")
             continue
     
-    # All models failed
     return {"error": "Gemini API failed after multiple attempts. Check API key and network."}
 
 async def send_analysis_result(uid, result, processing_msg, start_time):

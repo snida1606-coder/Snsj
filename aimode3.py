@@ -63,8 +63,12 @@ threading.Thread(target=run_uptime_server, daemon=True).start()
 BOT_TOKEN = "7623409497:AAECia8u02Vwj4QOdBweRDwMlihn3n3RW38"
 SUPABASE_URL = "https://jklibjyjzimcjlpvskvw.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbGlianlqemltY2pscHZza3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTE0NzEsImV4cCI6MjA4OTY4NzQ3MX0.aPMtnplXCpMenfdpDAPFcdMd4ccptM2L3C5oCWWC4X4"
+import google.generativeai as genai
 import os
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyA-aWa7bw6Ea6C1sZoNT5TiSPfJKE0IKxc")
+
+# Use environment variable if set, otherwise fallback to your hardcoded key
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyBUzDqdxNvaIxIkr7PO7jNkU6PEuKW5j-k")
+genai.configure(api_key=GEMINI_API_KEY)
 
 def is_authorized(uid: int) -> bool:
     headers = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}", "Content-Type": "application/json"}
@@ -2667,106 +2671,120 @@ async def s6_candles_received(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(f"❌ Invalid number: '{cleaned}'. Please enter a number.")
         return S6_MIN_CANDLES
 
-# ══════════════ AI AUTO ANALYSIS (Gemini Vision via REST API) ══════════════
-def analyze_chart_with_gemini_rest(image_path):
-    import json, re, base64, requests, os
-    
-    models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
-    api_key = os.environ.get("GEMINI_API_KEY", "AIzaSyBUzDqdxNvaIxIkr7PO7jNkU6PEuKW5j-k")
-    
-    for model in models:
-        try:
-            with open(image_path, "rb") as f:
-                image_data = base64.b64encode(f.read()).decode("utf-8")
-            
-            prompt = "You are a trader. Analyze this candlestick chart. Return EXACT JSON: {\"direction\":\"CALL/PUT\", \"confidence\":0-100, \"support\":number or null, \"resistance\":number or null, \"reason\":\"short\", \"pattern\":\"pattern name\", \"pair\":\"SYMBOL_OTC\", \"chart_time\":\"HH:MM\"} RETURN ONLY JSON."
-            
-            url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={api_key}"
-            payload = {
-                "contents": [{
-                    "parts": [
-                        {"text": prompt},
-                        {"inline_data": {"mime_type": "image/jpeg", "data": image_data}}
-                    ]
-                }]
-            }
-            headers = {"Content-Type": "application/json"}
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            result = response.json()
-            
-            if "error" in result:
-                print(f"Model {model} error: {result['error'].get('message', 'unknown')}")
-                continue
-                
-            text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-            if text:
-                json_match = re.search(r'\{.*\}', text, re.DOTALL)
-                if json_match:
-                    parsed = json.loads(json_match.group())
-                    if "direction" in parsed:
-                        return parsed
-        except Exception as e:
-            print(f"Model {model} exception: {e}")
-            continue
-    
-    return {"error": "Gemini API failed after multiple attempts. Check API key and network."}
+async def analyze_chart_with_retry(image_bytes, prompt, max_retries=3):
+    """Gemini API call with retry, using the official library."""
+    model = genai.GenerativeModel("gemini-1.5-flash")  # stable model
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(image_bytes))
+    except Exception as e:
+        print(f"Image load error: {e}")
+        return None
 
-async def send_analysis_result(uid, result, processing_msg, start_time):
-    """Format and send analysis result using global bot_instance."""
-    from datetime import datetime
-    import math
-    st = get_state(uid)
-    
-    if "error" in result:
-        msg = f"❌ **Analysis failed**\n\n{result.get('error', 'Unknown error. Please send a clearer chart.')}"
-        await processing_msg.edit_text(msg)
+    for attempt in range(max_retries):
+        try:
+            # Run the blocking Gemini call in a thread (non‑blocking)
+            response = await asyncio.to_thread(model.generate_content, [prompt, img])
+            if response and response.text:
+                return response.text
+        except Exception as e:
+            print(f"Gemini attempt {attempt+1} failed: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2 ** attempt)  # 1s, 2s, 4s
+    return None
+
+async def handle_ai_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receive photo, analyze with Gemini, send result."""
+    uid = update.effective_user.id
+    if not is_authorized(uid):
+        await update.message.reply_text("⛔ Access denied.")
         return
-    
+
+    state = context.user_data.get('state')
+    if state != STATE_AI_ANALYSIS_WAIT_IMAGE:
+        await update.message.reply_text("❌ Please use /start and select 'AI Auto Analysis' first.")
+        return
+
+    if not update.message.photo:
+        await update.message.reply_text("❌ Please send a photo (screenshot) of the chart.")
+        return
+
+    start_time = time.time()
+    photo_file = await update.message.photo[-1].get_file()
+    image_bytes = await photo_file.download_as_bytearray()  # no temp file
+
+    processing_msg = await update.message.reply_text(
+        "🤖 `ANALYZING CHART`\n\n⏳ Gemini Vision is analyzing...\n🔥 This may take 10-15 seconds.",
+        parse_mode="Markdown"
+    )
+
+    prompt = """You are a professional algorithmic trader. Analyze this candlestick chart for OTC trading.
+Return EXACT JSON format:
+{
+  "direction": "CALL" or "PUT",
+  "confidence": 0-100,
+  "support": number or null,
+  "resistance": number or null,
+  "reason": "short reason (max 100 chars)",
+  "pattern": "pattern name",
+  "pair": "SYMBOL_OTC",
+  "chart_time": "HH:MM"
+}
+ONLY JSON, no extra text."""
+
+    analysis_text = await analyze_chart_with_retry(image_bytes, prompt)
+
+    if analysis_text is None:
+        await processing_msg.edit_text("❌ **Analysis failed**\n\nGemini API failed after multiple attempts. Check API key and network.")
+        return
+
+    # Parse JSON from response
+    import json, re
+    json_match = re.search(r'\{.*\}', analysis_text, re.DOTALL)
+    if not json_match:
+        await processing_msg.edit_text("❌ Invalid response from Gemini.")
+        return
+
+    try:
+        result = json.loads(json_match.group())
+    except:
+        await processing_msg.edit_text("❌ Could not parse Gemini response as JSON.")
+        return
+
+    if "error" in result:
+        await processing_msg.edit_text(f"❌ {result['error']}")
+        return
+
+    # Extract values
     direction = result.get("direction", "CALL")
     confidence = result.get("confidence", 50)
     support = result.get("support")
     resistance = result.get("resistance")
-    reason = result.get("reason", "No specific reason provided.")
-    pattern = result.get("pattern", "None")
-    pair = result.get("pair", "FROM IMAGE")
+    reason = result.get("reason", "No reason provided")
+    pair = result.get("pair", "FROM_IMAGE")
     chart_time = result.get("chart_time", "")
-    
-    # If pair is missing or generic, try to extract from image? Keep as is.
-    # Convert pair to format with _OTC if not already
-    if "_OTC" not in pair and "OTC" not in pair.upper():
+
+    if "_OTC" not in pair:
         pair = pair.upper() + "_OTC"
-    
-    # Confidence level text
-    if confidence >= 80:
-        conf_text = "High"
-        conf_emoji = "🚨"
-    elif confidence >= 50:
-        conf_text = "Medium"
-        conf_emoji = "🚨"
+
+    conf_text = "High" if confidence >= 80 else "Medium" if confidence >= 50 else "Low"
+    conf_emoji = "💪" if confidence >= 80 else "😎" if confidence >= 50 else "⚠️"
+    dir_emoji = "🔴" if direction == "PUT" else "🟢"
+
+    sup_str = f"{support:.5f}" if isinstance(support, (int, float)) else "N/A"
+    res_str = f"{resistance:.5f}" if isinstance(resistance, (int, float)) else "N/A"
+
+    if chart_time:
+        time_str = chart_time
     else:
-        conf_text = "Low"
-        conf_emoji = "⚠️"
-    
-    dir_emoji = "📈" if direction == "PUT" else "📉"
-    
-    # Format support/resistance
-    sup_str = f"{support:.5f}" if support and isinstance(support, (int, float)) else "N/A"
-    res_str = f"{resistance:.5f}" if resistance and isinstance(resistance, (int, float)) else "N/A"
-    
-    # Analysis time: use the chart_time extracted from image, otherwise fallback to processing duration
-    if chart_time and chart_time != "Unknown":
-        analysis_time_str = chart_time
-        time_unit = " (chart time)"
-    else:
-        analysis_time_val = time.time() - start_time
-        analysis_time_str = f"{analysis_time_val:.1f}s"
-        time_unit = ""
-    
-    # Signals left (example: based on remaining daily limit? For now, just show user's total)
-    total_signals = st.stats['wins'] + st.stats['losses']
-    signals_left = max(0, 50 - total_signals)  # Example limit of 50 per day (customize)
-    
-    # Build message
+        time_str = f"{time.time() - start_time:.1f}s"
+
+    # Signals left (example)
+    st = get_state(uid)
+    total = st.stats['wins'] + st.stats['losses']
+    signals_left = max(0, 50 - total)
+
     msg = (
         f"❀° ┄────────=─────────╮\n"
         f"   🤖 𝙰𝙸 𝙲𝙷𝙰𝚁𝚃 𝙰𝙽𝙰𝙻𝚈𝚂𝙸𝚂 🤖\n"
@@ -2775,25 +2793,23 @@ async def send_analysis_result(uid, result, processing_msg, start_time):
         f"📊 Pair∶— {fancy_font(pair)}\n"
         f"{dir_emoji} Direction∶— {fancy_font(direction)}\n"
         f"{conf_emoji} Confidence∶— {fancy_font(conf_text)} ({confidence}%)\n"
-        f"🔴 Support∶— {fancy_font(sup_str)}\n"
-        f"🔴 Resistance∶— {fancy_font(res_str)}\n"
-        f"⏱ Analysis Time∶— {fancy_font(analysis_time_str)} {time_unit}\n"
+        f"📈 Support∶— {fancy_font(sup_str)}\n"
+        f"📉 Resistance∶— {fancy_font(res_str)}\n"
+        f"⏱ Analysis Time∶— {fancy_font(time_str)} 🟢\n"
         f"📊 Signals Left∶— {signals_left}\n"
         f"┗───˚⊹ ─────────♡───┛\n\n"
         f"•❅✦──────✧❅✦❅✧──────✦❅•\n"
-        f"📊 𝚃𝚛𝚊𝚍𝚎 𝚂𝚒𝚐𝚗𝚊𝚕∶ {fancy_font(direction)}\n"
-        f"🥷 𝙲𝚘𝚗𝚏𝚒𝚍𝚎𝚗𝚌𝚎∶ {fancy_font(conf_text)} ({confidence}%)\n\n"
+        f"📊 𝚃𝚛𝚊𝚍𝚎 𝚂𝚒𝚐𝚗𝚊𝚕∶ {dir_emoji} {fancy_font(direction)}\n"
+        f"💪 𝙲𝚘𝚗𝚏𝚒𝚍𝚎𝚗𝚌𝚎∶ {fancy_font(conf_text)} ({confidence}%)\n\n"
         f"💡 𝚁𝚎𝚊𝚜𝚘𝚗∶ {fancy_font(reason)}\n\n"
-
         f"⚠️ 𝚁𝚒𝚜𝚔 𝚆𝚊𝚛𝚗𝚒𝚗𝚐∶ 𝚃𝚛𝚊𝚍𝚎 𝚌𝚊𝚛𝚎𝚏𝚞𝚕𝚕𝚢! 𝙾𝚃𝙲 𝚖𝚊𝚛𝚔𝚎𝚝𝚜 𝚊𝚛𝚎 𝚟𝚘𝚕𝚊𝚝𝚒𝚕𝚎. 🔥🔥🔥\n"
         f"✨ ©𝙾𝚆𝙽𝙴𝚁 @𝚁𝚘𝚑𝚊𝚒𝚕𝚝𝚛𝚊𝚍𝚎𝚛 ✨"
     )
-    
+
     entities = build_custom_emoji_entities(msg)
     await processing_msg.delete()
-    # Use global bot_instance to send message
-    await bot_instance.send_message(chat_id=uid, text=msg, entities=entities)
-    await bot_instance.send_message(chat_id=uid, text="✅ AI analysis completed. Use /start for Main Menu")
+    await context.bot.send_message(chat_id=uid, text=msg, entities=entities)
+    await context.bot.send_message(chat_id=uid, text="✅ AI analysis completed. Use /start for Main Menu")
 
 # ══════════════ STATE CONSTANTS (must match previous parts) ══════════════
 (S2_FILTER_CHOICE, S2_FILTER_TOGGLE, S2_ACCURACY,
@@ -3630,46 +3646,6 @@ async def global_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             sender.send_message(uid, "❌ No future signals found.")
         context.user_data['state'] = None
 
-async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle photo messages for AI Auto Analysis using asyncio.to_thread"""
-    uid = update.effective_user.id
-    if not is_authorized(uid):
-        await update.message.reply_text("⛔ Access denied.")
-        return
-    
-    state = context.user_data.get('state')
-    
-    if state == STATE_AI_ANALYSIS_WAIT_IMAGE:
-        start_time = time.time()
-        context.user_data['analysis_start'] = start_time
-        photo_file = await update.message.photo[-1].get_file()
-        file_path = f"temp_chart_{uuid.uuid4().hex[:8]}.jpg"
-        await photo_file.download_to_drive(file_path)
-        context.user_data['state'] = STATE_AI_ANALYSIS_PROCESSING
-        
-        # Premium styled "analyzing" message
-        analysis_msg = (
-            f"🤖 {fancy_font('ANALYZING CHART')} 🤖\n\n"
-            f"⏳ {fancy_font('SMZ PRIV AI is analyzing your screenshot...')}\n"
-            f"🔥 {fancy_font('This may take 10-15 seconds.')}"
-        )
-        entities = build_custom_emoji_entities(analysis_msg)
-        processing_msg = await update.message.reply_text(analysis_msg, entities=entities)
-        
-        # Run the blocking API call in a separate thread
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, analyze_chart_with_gemini_rest, file_path)
-        
-        # Clean up temp file
-        try:
-            os.remove(file_path)
-        except:
-            pass
-        
-        # Send the result using the main bot instance
-        await send_analysis_result(uid, result, processing_msg, start_time)
-    else:
-        await update.message.reply_text("❌ Please use /start and select 'AI Auto Analysis' first.")
 
 # ----- Additional callbacks for future pairs and font style -----
 async def fut_pair_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3787,7 +3763,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, global_text_handler))
     app.add_handler(CallbackQueryHandler(fut_pair_callback, pattern="^pair_"))
     app.add_handler(CallbackQueryHandler(font_style_callback, pattern="^font_"))
-    app.add_handler(MessageHandler(filters.PHOTO, photo_handler))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_ai_analysis))
     app.add_handler(CommandHandler("continue", continue_cmd))
     app.add_handler(CommandHandler("stop", stop_cmd))
 

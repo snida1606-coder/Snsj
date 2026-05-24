@@ -1,2 +1,2 @@
 #!/bin/bash
-python aimode3.py
+python aimode4.py

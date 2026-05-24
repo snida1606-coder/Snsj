@@ -2332,10 +2332,11 @@ def run_smz_hacking_mode(uid, days, start_time, end_time, timeframe):
     for sig in signals_api:
         parts = sig.split(";")
         if len(parts) >= 4:
+            # sio format: TIMEFRAME;ASSET;TIME;DIRECTION (e.g. M1;USDPHP-OTC;00:10;PUT)
             time_user = _smz_hack_time_api_to_user(parts[2])
             signals_utc5.append({
-                "asset": parts[0],
-                "tf": parts[1],
+                "asset": parts[1],
+                "tf": parts[0],
                 "time": time_user,
                 "direction": parts[3].upper()
             })
@@ -2355,9 +2356,8 @@ def run_smz_hacking_mode(uid, days, start_time, end_time, timeframe):
 
     signal_lines = []
     for i, sig in enumerate(signals_utc5, 1):
-        direction_emoji = "📈" if sig['direction'] == "CALL" else "📉"
         signal_lines.append(
-            f"{direction_emoji} {sig['asset']} │ {sig['time']} │ {sig['direction']}"
+            f"{sig['tf']};{sig['asset']};{sig['time']};{sig['direction']}"
         )
 
     footer = (

@@ -2356,9 +2356,8 @@ def run_smz_hacking_mode(uid, days, start_time, end_time, timeframe):
 
     signal_lines = []
     for i, sig in enumerate(signals_utc5, 1):
-        direction_emoji = "📈" if sig['direction'] == "CALL" else "📉"
         signal_lines.append(
-            f"{direction_emoji} {sig['asset']} │ {sig['time']} │ {sig['direction']}"
+            f"{sig['tf']};{sig['asset']};{sig['time']};{sig['direction']}"
         )
 
     footer = (

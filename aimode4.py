@@ -3433,7 +3433,16 @@ async def checker_date_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_text(text)
         return
     context.user_data['state'] = STATE_CHECKER_SIGNALS
-    text = "⏰ Now paste your signals (one per line):"
+    text = (
+        "🔮  𝚂𝙸𝙶𝙽𝙰𝙻 𝙲𝙷𝙴𝙲𝙺𝙴𝚁\n\n"
+        "    Paste your signals below (one per line)\n"
+        "📋 Format: M1;PAIR;HH:MM;DIRECTION\n"
+        "📝 Example:\n"
+        "   M1;GBPJPY-OTC;08:24;CALL\n"
+        "   M1;EURUSD-OTC;09:15;PUT\n\n"
+        "⏰ Use UTC+5 time\n"
+        "📌 Paste your signals now..."
+    )
     await query.edit_message_text(text)
 
 # ----- Continue and Stop commands -----

@@ -2914,8 +2914,8 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
          colored_button(" Candle Colors", "menu_candle_colors", KeyboardButtonStyle.PRIMARY, "5217911744495624141")],
         [colored_button(" Text Formatter", "menu_text_formatter", KeyboardButtonStyle.PRIMARY, "5282843764451195532"),
          colored_button(" Font Changer", "menu_font_changer", KeyboardButtonStyle.PRIMARY, "6282685788450721937")],
-        [colored_button(" Trend Filter", "menu_trend_filter", KeyboardButtonStyle.SUCCESS, "5316681209026191987"),
-         colored_button(" AI Filter", "menu_ai_filter", KeyboardButtonStyle.PRIMARY, "6217370240800527004")],
+        [colored_button(" Trend Filter", "menu_trend_filter", KeyboardButtonStyle.PRIMARY, "5316681209026191987"),
+         colored_button(" AI Filter", "menu_ai_filter", KeyboardButtonStyle.SUCCESS, "6217370240800527004")],
         [colored_button(" AI Chart Analyzer", "menu_chart_analyzer", KeyboardButtonStyle.SUCCESS, "5854710508065658472")],
         [colored_button(" Help", "menu_admin", KeyboardButtonStyle.DANGER, "6062294201696000196")],
     ]
@@ -3016,7 +3016,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_ai_filter":
         context.user_data['state'] = STATE_AI_FILTER_SIGNALS
         msg = (
-            "🤖 𝚂𝙸𝙾 𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁\n\n"
+            "🤖  𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁\n\n"
             "🔮 Paste your signals below (one per line)\n"
             "📋 Format: M1;PAIR;HH:MM;DIRECTION\n"
             "📝 Example:\n"
@@ -3716,9 +3716,9 @@ async def global_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.user_data['ai_filter_signals'] = lines
         context.user_data['state'] = STATE_AI_FILTER_CONFIDENCE
         conf_buttons = [
-            [colored_button(" 🟢 Low (Baixa)", "aifilter_conf_Baixa", KeyboardButtonStyle.SUCCESS, "6145553439809084250"),
-             colored_button(" 🟡 Medium (Média)", "aifilter_conf_Média", KeyboardButtonStyle.PRIMARY, "6145553439809084250")],
-            [colored_button(" 🔴 High (Alta)", "aifilter_conf_Alta", KeyboardButtonStyle.DANGER, "6145553439809084250")],
+            [colored_button(" 🟢 Low ", "aifilter_conf_Baixa", KeyboardButtonStyle.SUCCESS, "6145553439809084250"),
+             colored_button(" 🟡 Medium ", "aifilter_conf_Média", KeyboardButtonStyle.PRIMARY, "6145553439809084250")],
+            [colored_button(" 🔴 High ", "aifilter_conf_Alta", KeyboardButtonStyle.DANGER, "6145553439809084250")],
         ]
         msg = f"✅ Got {len(lines)} signals!\n\n💎 Select AI confidence level:"
         entities = build_custom_emoji_entities(msg)
@@ -3804,8 +3804,8 @@ async def smz_tf_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎯 Custom Pair – choose specific pair"
     )
     pair_buttons = [
-        [colored_button(" 🌍 All Pairs", "smz_pair_all", KeyboardButtonStyle.SUCCESS, "6145553439809084250")],
-        [colored_button(" 🎯 Custom Pair", "smz_pair_custom", KeyboardButtonStyle.PRIMARY, "6217370240800527004")],
+        [colored_button("  All Pairs", "smz_pair_all", KeyboardButtonStyle.SUCCESS, "6145553439809084250")],
+        [colored_button("  Custom Pair", "smz_pair_custom", KeyboardButtonStyle.PRIMARY, "6217370240800527004")],
     ]
     entities = build_custom_emoji_entities(pair_msg)
     await query.message.reply_text(pair_msg, entities=entities, reply_markup=InlineKeyboardMarkup(pair_buttons))

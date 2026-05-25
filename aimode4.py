@@ -4053,15 +4053,18 @@ def run_ai_filter(uid, raw_signals, confidence, timeframe):
         "timeframe": timeframe
     }
 
-    data = None
+    job_id = None
     for attempt in range(3):
         try:
             timeout = 60 if attempt == 0 else 90
-            print(f"AI Filter attempt {attempt+1}/3 (timeout={timeout}s)")
+            print(f"AI Filter submit attempt {attempt+1}/3 (timeout={timeout}s)")
             resp = requests.post(AI_FILTER_URL, headers=AI_FILTER_HEADERS, json=payload, timeout=timeout)
             if resp.status_code == 200:
-                data = resp.json()
-                break
+                submit_data = resp.json()
+                job_id = submit_data.get("id")
+                if job_id:
+                    print(f"AI Filter job submitted: {job_id}")
+                    break
             print(f"AI Filter HTTP {resp.status_code}")
         except requests.exceptions.Timeout:
             print(f"AI Filter timeout on attempt {attempt+1}")
@@ -4069,6 +4072,25 @@ def run_ai_filter(uid, raw_signals, confidence, timeframe):
             print(f"AI Filter error: {e}")
         if attempt < 2:
             time.sleep(3)
+
+    if not job_id:
+        sender.send_message(uid, "❌ AI Filter server is busy. Please try again in 30 seconds.")
+        return
+
+    data = None
+    for poll in range(20):
+        time.sleep(3)
+        try:
+            print(f"AI Filter polling attempt {poll+1}/20")
+            result_resp = requests.get(f"{AI_FILTER_URL}/{job_id}", headers=AI_FILTER_HEADERS, timeout=30)
+            if result_resp.status_code == 200:
+                result_data = result_resp.json()
+                if result_data.get("status") == "finished":
+                    data = result_data
+                    print("AI Filter result received")
+                    break
+        except Exception as e:
+            print(f"AI Filter poll error: {e}")
 
     if data is None:
         sender.send_message(uid, "❌ AI Filter server is busy. Please try again in 30 seconds.")

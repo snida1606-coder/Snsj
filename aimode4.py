@@ -4074,13 +4074,7 @@ def run_ai_filter(uid, raw_signals, confidence, timeframe):
     win_section += f"🏆 𝙰𝙸 𝙰𝙲𝙲𝙴𝙿𝚃𝙴𝙳 ({len(wins)}):\n\n"
     if wins:
         for sig in wins:
-            parts = sig.split(";")
-            if len(parts) >= 4:
-                direction = parts[3].strip().upper()
-                emoji = "📈" if direction == "CALL" else "📉"
-                win_section += f"{emoji} {sig}\n"
-            else:
-                win_section += f"📈 {sig}\n"
+            win_section += f"{sig}\n"
     else:
         win_section += "   No winning signals\n"
     win_section += "\n┗───˚⊹ ─────────♡───┛\n\n"
@@ -4089,13 +4083,7 @@ def run_ai_filter(uid, raw_signals, confidence, timeframe):
     loss_section += f"💀 𝙰𝙸 𝚁𝙴𝙹𝙴𝙲𝚃𝙴𝙳 ({len(losses)}):\n\n"
     if losses:
         for sig in losses:
-            parts = sig.split(";")
-            if len(parts) >= 4:
-                direction = parts[3].strip().upper()
-                emoji = "📈" if direction == "CALL" else "📉"
-                loss_section += f"❌ {sig}\n"
-            else:
-                loss_section += f"❌ {sig}\n"
+            loss_section += f"{sig}\n"
     else:
         loss_section += "   No losing signals\n"
     loss_section += "\n┗───˚⊹ ─────────💀───┛\n\n"

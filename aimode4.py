@@ -3017,7 +3017,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['state'] = STATE_AI_FILTER_SIGNALS
         msg = (
             "🤖  𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁\n\n"
-            "🔮 Paste your signals below (one per line)\n"
+            "    Paste your signals below (one per line)\n"
             "📋 Format: M1;PAIR;HH:MM;DIRECTION\n"
             "📝 Example:\n"
             "   M1;GBPJPY-OTC;08:24;CALL\n"
@@ -3716,9 +3716,9 @@ async def global_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.user_data['ai_filter_signals'] = lines
         context.user_data['state'] = STATE_AI_FILTER_CONFIDENCE
         conf_buttons = [
-            [colored_button(" 🟢 Low ", "aifilter_conf_Baixa", KeyboardButtonStyle.SUCCESS, "6145553439809084250"),
-             colored_button(" 🟡 Medium ", "aifilter_conf_Média", KeyboardButtonStyle.PRIMARY, "6145553439809084250")],
-            [colored_button(" 🔴 High ", "aifilter_conf_Alta", KeyboardButtonStyle.DANGER, "6145553439809084250")],
+            [colored_button("  Low ", "aifilter_conf_Baixa", KeyboardButtonStyle.SUCCESS, ),
+             colored_button("  Medium ", "aifilter_conf_Média", KeyboardButtonStyle.PRIMARY, )],
+            [colored_button("  High ", "aifilter_conf_Alta", KeyboardButtonStyle.DANGER, )],
         ]
         msg = f"✅ Got {len(lines)} signals!\n\n💎 Select AI confidence level:"
         entities = build_custom_emoji_entities(msg)
@@ -3800,8 +3800,8 @@ async def smz_tf_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pair_msg = (
         "🥷 𝚂𝙼𝚉 𝙷𝙰𝙲𝙺𝙸𝙽𝙶 𝙼𝙾𝙳𝙴\n\n"
         "💎 Select Pair Mode:\n\n"
-        "🌍 All Pairs – scan all 69 OTC pairs\n"
-        "🎯 Custom Pair – choose specific pair"
+        " All Pairs – scan all 69 OTC pairs\n"
+        " Custom Pair – choose specific pair"
     )
     pair_buttons = [
         [colored_button("  All Pairs", "smz_pair_all", KeyboardButtonStyle.SUCCESS, "6145553439809084250")],
@@ -3841,7 +3841,7 @@ def _build_smz_pair_page(page=0, per_page=15, selected=None):
         buttons.append(nav_row)
 
     if selected:
-        buttons.append([colored_button(f" ✅ Done ({len(selected)} selected)", "smz_pair_done", KeyboardButtonStyle.SUCCESS, "6145553439809084250")])
+        buttons.append([colored_button(f" Done ({len(selected)} selected)", "smz_pair_done", KeyboardButtonStyle.SUCCESS, "6145553439809084250")])
 
     return buttons, page, total_pages
 
@@ -3861,7 +3861,7 @@ async def smz_pair_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         start = context.user_data.get('smz_hack_start', '08:00')
         end = context.user_data.get('smz_hack_end', '16:30')
         tf = context.user_data.get('smz_hack_tf', 'M1')
-        msg = f"🥷 𝚂𝙼𝚉 𝙷𝚊𝚌𝚔𝚒𝚗𝚐 𝙼𝚘𝚍𝚎 𝚜𝚝𝚊𝚛𝚝𝚎𝚍!\n🌍 Scanning ALL 69 pairs\n⏳ Fetching signals ({days} days, {start}-{end}, {tf})...\n\n🔥 Please wait 30-60 seconds..."
+        msg = f"🥷 𝚂𝙼𝚉 𝙷𝚊𝚌𝚔𝚒𝚗𝚐 𝙼𝚘𝚍𝚎 𝚜𝚝𝚊𝚛𝚝𝚎𝚍!\n Scanning ALL 69 pairs\n⏳ Fetching signals ({days} days, {start}-{end}, {tf})...\n\n🔥 Please wait 30-60 seconds..."
         entities = build_custom_emoji_entities(msg)
         await query.message.reply_text(msg, entities=entities)
         threading.Thread(target=run_smz_hacking_mode, args=(uid, days, start, end, tf, SIO_ALL_PAIRS), daemon=True).start()
@@ -4062,7 +4062,7 @@ def run_ai_filter(uid, raw_signals, confidence, timeframe):
 
     header = (
         "❀° ┄────────=─────────╮\n"
-        "   🤖 𝚂𝙸𝙾 𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁 🤖\n"
+        "   🤖 𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁 🤖\n"
         "╰────────=───=─────┄ °❀\n\n"
         f"📊 Total: {len(raw_signals)} signals\n"
         f"💎 Confidence: {confidence}\n"

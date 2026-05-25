@@ -2887,7 +2887,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"10. 🐶Text Formatter – reformat signal lists\n"
         f"11. 🐶 Font Changer – apply text styles\n"
         f"12. 📺 Trend Filter – Ai trend filter\n"
-        f"13. 🤖 AI Filter – SIO AI signal classifier\n"
+        f"13. 🤖 AI Filter – AI signal classifier\n"
         f"14. 📸 AI Chart Analyzer – send chart screenshot\n"
         f"15. 🤭 Help – contact support\n\n"
         f"💎 Choose an option below to continue.\n\n"

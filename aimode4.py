@@ -3012,7 +3012,19 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sender.send_message(uid, "📱 **TEXT FONT CHANGER**\n\n📝 Please paste your signals or text below:\n\n✨ Premium emojis will be preserved!")
     elif data == "menu_trend_filter":
         context.user_data['state'] = STATE_TREND_FILTER_INPUT
-        sender.send_message(uid, "📉 **Trend Filter**\n\nPaste your signal list (one per line).\nFormat: pair;time;direction (or any readable format).\n\nI will check the previous 1‑hour trend and filter accordingly.")
+        msg = (
+            "📉  𝚃𝚁𝙴𝙽𝙳 𝙵𝙸𝙻𝚃𝙴𝚁\n\n"
+            "    Paste your signals below (one per line)\n"
+            "📋 Format: M1;PAIR;HH:MM;DIRECTION\n"
+            "📝 Example:\n"
+            "   M1;GBPJPY-OTC;08:24;CALL\n"
+            "   M1;EURUSD-OTC;09:15;PUT\n\n"
+            "⏰ Use UTC+5 time\n"
+            "📌 Paste your signals now..."
+        )
+        entities = build_custom_emoji_entities(msg)
+        await query.message.reply_text(msg, entities=entities)
+        return
     elif data == "menu_ai_filter":
         context.user_data['state'] = STATE_AI_FILTER_SIGNALS
         msg = (
@@ -3023,7 +3035,6 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "   M1;GBPJPY-OTC;08:24;CALL\n"
             "   M1;EURUSD-OTC;09:15;PUT\n\n"
             "⏰ Use UTC+5 time\n"
-            "💎 AI will classify each as WIN or LOSS\n\n"
             "📌 Paste your signals now..."
         )
         entities = build_custom_emoji_entities(msg)
@@ -3422,7 +3433,16 @@ async def checker_date_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_text(text)
         return
     context.user_data['state'] = STATE_CHECKER_SIGNALS
-    text = "⏰ Now paste your signals (one per line):"
+    text = (
+        "🔮  𝚂𝙸𝙶𝙽𝙰𝙻 𝙲𝙷𝙴𝙲𝙺𝙴𝚁\n\n"
+        "    Paste your signals below (one per line)\n"
+        "📋 Format: M1;PAIR;HH:MM;DIRECTION\n"
+        "📝 Example:\n"
+        "   M1;GBPJPY-OTC;08:24;CALL\n"
+        "   M1;EURUSD-OTC;09:15;PUT\n\n"
+        "⏰ Use UTC+5 time\n"
+        "📌 Paste your signals now..."
+    )
     await query.edit_message_text(text)
 
 # ----- Continue and Stop commands -----

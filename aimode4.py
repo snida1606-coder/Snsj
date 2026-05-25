@@ -3582,7 +3582,7 @@ async def global_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     if state == STATE_CHECKER_CUSTOM_DATE:
         context.user_data['checker_date'] = text
         context.user_data['state'] = STATE_CHECKER_SIGNALS
-        sender.send_message(uid, "⏰ Now paste your signals (one per line):")
+        sender.send_message(uid, "🔮  𝚂𝙸𝙶𝙽𝙰𝙻 𝙲𝙷𝙴𝙲𝙺𝙴𝚁\n\n    Paste your signals below (one per line)\n📋 Format: M1;PAIR;HH:MM;DIRECTION\n📝 Example:\n   M1;GBPJPY-OTC;08:24;CALL\n   M1;EURUSD-OTC;09:15;PUT\n\n⏰ Use UTC+5 time\n📌 Paste your signals now...")
     elif state == STATE_CHECKER_SIGNALS:
         date_str = context.user_data.get('checker_date')
         run_checker_sio(uid, date_str, text)
@@ -3662,7 +3662,7 @@ async def global_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         if re.match(r'^\d{4}-\d{2}-\d{2}$', text):
             context.user_data['backtest_end'] = text
             context.user_data['state'] = STATE_BACKTEST_SIGNALS
-            sender.send_message(uid, "📋 Now paste your signals (one per line, format: pair;time;direction):")
+            sender.send_message(uid, "📺  𝙱𝙰𝙲𝙺𝚃𝙴𝚂𝚃\n\n    Paste your signals below (one per line)\n📋 Format: M1;PAIR;HH:MM;DIRECTION\n📝 Example:\n   M1;GBPJPY-OTC;08:24;CALL\n   M1;EURUSD-OTC;09:15;PUT\n\n⏰ Use UTC+5 time\n📌 Paste your signals now...")
         else:
             sender.send_message(uid, "Invalid date format. Use YYYY-MM-DD:")
     elif state == STATE_BACKTEST_SIGNALS:

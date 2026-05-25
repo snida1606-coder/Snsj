@@ -4033,14 +4033,25 @@ def run_ai_filter(uid, raw_signals, confidence, timeframe):
         "timeframe": timeframe
     }
 
-    try:
-        resp = requests.post(AI_FILTER_URL, headers=AI_FILTER_HEADERS, json=payload, timeout=30)
-        if resp.status_code != 200:
-            sender.send_message(uid, f"❌ AI Filter error: {resp.status_code}")
-            return
-        data = resp.json()
-    except Exception as e:
-        sender.send_message(uid, f"❌ Connection error: {e}")
+    data = None
+    for attempt in range(3):
+        try:
+            timeout = 60 if attempt == 0 else 90
+            print(f"AI Filter attempt {attempt+1}/3 (timeout={timeout}s)")
+            resp = requests.post(AI_FILTER_URL, headers=AI_FILTER_HEADERS, json=payload, timeout=timeout)
+            if resp.status_code == 200:
+                data = resp.json()
+                break
+            print(f"AI Filter HTTP {resp.status_code}")
+        except requests.exceptions.Timeout:
+            print(f"AI Filter timeout on attempt {attempt+1}")
+        except Exception as e:
+            print(f"AI Filter error: {e}")
+        if attempt < 2:
+            time.sleep(3)
+
+    if data is None:
+        sender.send_message(uid, "❌ AI Filter server is busy. Please try again in 30 seconds.")
         return
 
     wins_api = data.get("signals", [])

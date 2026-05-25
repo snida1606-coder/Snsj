@@ -2248,6 +2248,23 @@ SMZ_HACK_DEFAULT_ASSETS = [
     "PFE-OTC", "TRUUSD-OTC"
 ]
 
+SIO_ALL_PAIRS = [
+    "ATOUSD-OTC", "AUDCAD-OTC", "AUDCHF-OTC", "AUDJPY-OTC", "AUDNZD-OTC",
+    "AUDUSD-OTC", "AVAUSD-OTC", "AXP-OTC", "AXSUSD-OTC", "BA-OTC",
+    "BCHUSD-OTC", "BNBUSD-OTC", "BTCUSD-OTC", "CADCHF-OTC", "CADJPY-OTC",
+    "CHFJPY-OTC", "DASUSD-OTC", "DOTUSD-OTC", "ETCUSD-OTC", "ETHUSD-OTC",
+    "EURAUD-OTC", "EURCAD-OTC", "EURCHF-OTC", "EURGBP-OTC", "EURJPY-OTC",
+    "EURNZD-OTC", "EURUSD-OTC", "FB-OTC", "GBPAUD-OTC", "GBPCAD-OTC",
+    "GBPCHF-OTC", "GBPJPY-OTC", "GBPNZD-OTC", "GBPUSD-OTC", "INTC-OTC",
+    "JNJ-OTC", "LINUSD-OTC", "LTCUSD-OTC", "MCD-OTC", "MSFT-OTC",
+    "NZDCAD-OTC", "NZDCHF-OTC", "NZDJPY-OTC", "NZDUSD-OTC", "PFE-OTC",
+    "SOLUSD-OTC", "TONUSD-OTC", "TRUUSD-OTC", "UKBrent-OTC", "USCrude-OTC",
+    "USDARS-OTC", "USDBDT-OTC", "USDBRL-OTC", "USDCAD-OTC", "USDCHF-OTC",
+    "USDCOP-OTC", "USDDZD-OTC", "USDEGP-OTC", "USDIDR-OTC", "USDINR-OTC",
+    "USDJPY-OTC", "USDMXN-OTC", "USDNGN-OTC", "USDPHP-OTC", "USDPKR-OTC",
+    "USDZAR-OTC", "XAUUSD-OTC", "XRPUSD-OTC", "ZECUSD-OTC"
+]
+
 def _smz_hack_time_user_to_api(time_str, user_tz=5, api_tz=-3):
     try:
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2271,7 +2288,7 @@ def _fix_timeframe(tf):
                "m1": "M1", "m5": "M5", "m15": "M15", "h1": "H1", "m30": "M30"}
     return mapping.get(str(tf).strip().lower(), tf.upper() if tf else "M1")
 
-def run_smz_hacking_mode(uid, days, start_time, end_time, timeframe):
+def run_smz_hacking_mode(uid, days, start_time, end_time, timeframe, selected_assets=None):
     BASE_SIO = "https://sio.tools"
     CREATE_ENDPOINT = "/catalogadorquotex/catalog_signals_async"
     JOB_ENDPOINT = "/catalogadorquotex/catalog_signals"
@@ -2280,9 +2297,11 @@ def run_smz_hacking_mode(uid, days, start_time, end_time, timeframe):
     end_api = _smz_hack_time_user_to_api(end_time)
     tf = _fix_timeframe(timeframe)
 
+    assets_to_use = selected_assets if selected_assets else SMZ_HACK_DEFAULT_ASSETS
+
     payload = {
         "timeframes": [tf],
-        "assets": SMZ_HACK_DEFAULT_ASSETS,
+        "assets": assets_to_use,
         "days": days,
         "directions": ["CALL", "PUT"],
         "startTime": start_api,
@@ -2830,6 +2849,7 @@ STATE_SMZ_HACK_DAYS = 35
 STATE_SMZ_HACK_START = 36
 STATE_SMZ_HACK_END = 37
 STATE_SMZ_HACK_TIMEFRAME = 38
+STATE_SMZ_HACK_PAIRS = 39
 
 # ══════════════ HELPER FUNCTIONS FOR BUTTONS & ENTITIES ══════════════
 def colored_button(text, callback_data, style=KeyboardButtonStyle.PRIMARY, emoji_id=None):
@@ -3739,14 +3759,96 @@ async def smz_tf_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
     tf = data.replace("smz_tf_", "")
-    days = context.user_data.get('smz_hack_days', 8)
-    start = context.user_data.get('smz_hack_start', '08:00')
-    end = context.user_data.get('smz_hack_end', '16:30')
-    context.user_data['state'] = None
-    msg = f"🥷 𝚂𝙼𝚉 𝙷𝚊𝚌𝚔𝚒𝚗𝚐 𝙼𝚘𝚍𝚎 𝚜𝚝𝚊𝚛𝚝𝚎𝚍!\n⏳ Fetching signals ({days} days, {start}-{end}, {tf})...\n\n🔥 Please wait 30-60 seconds..."
-    entities = build_custom_emoji_entities(msg)
-    await query.message.reply_text(msg, entities=entities)
-    threading.Thread(target=run_smz_hacking_mode, args=(uid, days, start, end, tf), daemon=True).start()
+    context.user_data['smz_hack_tf'] = tf
+    context.user_data['state'] = STATE_SMZ_HACK_PAIRS
+
+    pair_msg = (
+        "🥷 𝚂𝙼𝚉 𝙷𝙰𝙲𝙺𝙸𝙽𝙶 𝙼𝙾𝙳𝙴\n\n"
+        "💎 Select Pair Mode:\n\n"
+        "🌍 All Pairs – scan all 69 OTC pairs\n"
+        "🎯 Custom Pair – choose specific pair"
+    )
+    pair_buttons = [
+        [colored_button(" 🌍 All Pairs", "smz_pair_all", KeyboardButtonStyle.SUCCESS, "6145553439809084250")],
+        [colored_button(" 🎯 Custom Pair", "smz_pair_custom", KeyboardButtonStyle.PRIMARY, "6217370240800527004")],
+    ]
+    entities = build_custom_emoji_entities(pair_msg)
+    await query.message.reply_text(pair_msg, entities=entities, reply_markup=InlineKeyboardMarkup(pair_buttons))
+
+def _build_smz_pair_page(page=0, per_page=15):
+    total = len(SIO_ALL_PAIRS)
+    start_idx = page * per_page
+    end_idx = min(start_idx + per_page, total)
+    page_pairs = SIO_ALL_PAIRS[start_idx:end_idx]
+    total_pages = (total + per_page - 1) // per_page
+
+    buttons = []
+    row = []
+    for pair in page_pairs:
+        short = pair.replace("-OTC", "")
+        row.append(colored_button(f" {short}", f"smz_pickpair_{pair}", KeyboardButtonStyle.PRIMARY, "6145553439809084250"))
+        if len(row) == 3:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    nav_row = []
+    if page > 0:
+        nav_row.append(colored_button("⬅️ Previous", f"smz_pairpage_{page-1}", KeyboardButtonStyle.PRIMARY))
+    if page < total_pages - 1:
+        nav_row.append(colored_button("Next ➡️", f"smz_pairpage_{page+1}", KeyboardButtonStyle.PRIMARY))
+    if nav_row:
+        buttons.append(nav_row)
+
+    return buttons, page, total_pages
+
+async def smz_pair_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    uid = query.from_user.id
+    if not is_authorized(uid):
+        await query.answer("⛔ Access denied.", show_alert=True)
+        return
+    await query.answer()
+    data = query.data
+
+    if data == "smz_pair_all":
+        context.user_data['smz_hack_assets'] = SIO_ALL_PAIRS[:]
+        context.user_data['state'] = None
+        days = context.user_data.get('smz_hack_days', 8)
+        start = context.user_data.get('smz_hack_start', '08:00')
+        end = context.user_data.get('smz_hack_end', '16:30')
+        tf = context.user_data.get('smz_hack_tf', 'M1')
+        msg = f"🥷 𝚂𝙼𝚉 𝙷𝚊𝚌𝚔𝚒𝚗𝚐 𝙼𝚘𝚍𝚎 𝚜𝚝𝚊𝚛𝚝𝚎𝚍!\n🌍 Scanning ALL 69 pairs\n⏳ Fetching signals ({days} days, {start}-{end}, {tf})...\n\n🔥 Please wait 30-60 seconds..."
+        entities = build_custom_emoji_entities(msg)
+        await query.message.reply_text(msg, entities=entities)
+        threading.Thread(target=run_smz_hacking_mode, args=(uid, days, start, end, tf, SIO_ALL_PAIRS), daemon=True).start()
+
+    elif data == "smz_pair_custom":
+        buttons, page, total_pages = _build_smz_pair_page(0)
+        msg = f"🎯 Select a pair (Page 1/{total_pages}):\n\n💎 Choose your OTC pair below:"
+        entities = build_custom_emoji_entities(msg)
+        await query.message.reply_text(msg, entities=entities, reply_markup=InlineKeyboardMarkup(buttons))
+
+    elif data.startswith("smz_pairpage_"):
+        page = int(data.replace("smz_pairpage_", ""))
+        buttons, page, total_pages = _build_smz_pair_page(page)
+        msg = f"🎯 Select a pair (Page {page+1}/{total_pages}):\n\n💎 Choose your OTC pair below:"
+        entities = build_custom_emoji_entities(msg)
+        await query.message.edit_text(msg, entities=entities, reply_markup=InlineKeyboardMarkup(buttons))
+
+    elif data.startswith("smz_pickpair_"):
+        pair = data.replace("smz_pickpair_", "")
+        context.user_data['smz_hack_assets'] = [pair]
+        context.user_data['state'] = None
+        days = context.user_data.get('smz_hack_days', 8)
+        start = context.user_data.get('smz_hack_start', '08:00')
+        end = context.user_data.get('smz_hack_end', '16:30')
+        tf = context.user_data.get('smz_hack_tf', 'M1')
+        msg = f"🥷 𝚂𝙼𝚉 𝙷𝚊𝚌𝚔𝚒𝚗𝚐 𝙼𝚘𝚍𝚎 𝚜𝚝𝚊𝚛𝚝𝚎𝚍!\n🎯 Pair: {pair}\n⏳ Fetching signals ({days} days, {start}-{end}, {tf})...\n\n🔥 Please wait 30-60 seconds..."
+        entities = build_custom_emoji_entities(msg)
+        await query.message.reply_text(msg, entities=entities)
+        threading.Thread(target=run_smz_hacking_mode, args=(uid, days, start, end, tf, [pair]), daemon=True).start()
 
 async def font_style_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4099,6 +4201,9 @@ def main():
     app.add_handler(CallbackQueryHandler(menu_callback, pattern="^fut_strategy_"))
     app.add_handler(CallbackQueryHandler(fut_pair_callback, pattern="^pair_"))
     app.add_handler(CallbackQueryHandler(smz_tf_callback, pattern="^smz_tf_"))
+    app.add_handler(CallbackQueryHandler(smz_pair_callback, pattern="^smz_pair_"))
+    app.add_handler(CallbackQueryHandler(smz_pair_callback, pattern="^smz_pickpair_"))
+    app.add_handler(CallbackQueryHandler(smz_pair_callback, pattern="^smz_pairpage_"))
     app.add_handler(CallbackQueryHandler(font_style_callback, pattern="^font_"))
     app.add_handler(CommandHandler("continue", continue_cmd))
     app.add_handler(CommandHandler("stop", stop_cmd))

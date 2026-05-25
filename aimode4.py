@@ -2850,6 +2850,8 @@ STATE_SMZ_HACK_START = 36
 STATE_SMZ_HACK_END = 37
 STATE_SMZ_HACK_TIMEFRAME = 38
 STATE_SMZ_HACK_PAIRS = 39
+STATE_AI_FILTER_SIGNALS = 40
+STATE_AI_FILTER_CONFIDENCE = 41
 
 # ══════════════ HELPER FUNCTIONS FOR BUTTONS & ENTITIES ══════════════
 def colored_button(text, callback_data, style=KeyboardButtonStyle.PRIMARY, emoji_id=None):
@@ -2885,14 +2887,15 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"10. 🐶Text Formatter – reformat signal lists\n"
         f"11. 🐶 Font Changer – apply text styles\n"
         f"12. 📺 Trend Filter – Ai trend filter\n"
-        f"13. 📸 AI Chart Analyzer – send chart screenshot\n"
-        f"14. 🤭 Help – contact support\n\n"
+        f"13. 🤖 AI Filter – SIO AI signal classifier\n"
+        f"14. 📸 AI Chart Analyzer – send chart screenshot\n"
+        f"15. 🤭 Help – contact support\n\n"
         f"💎 Choose an option below to continue.\n\n"
         f"©OWNER @Rohailtrader ✨"
     )
     bold_words = ["AI Mode", "Start Trading", "Signal Checker", "Future Signals", "Backtest",
                   "UTC Converter", "Pair Payout%", "Market Trend", "Candle Colors",
-                  "Text Formatter", "Font Changer", "Trend Filter", "AI Chart Analyzer", "Help", "SMZXV4.3"]
+                  "Text Formatter", "Font Changer", "Trend Filter", "AI Filter", "AI Chart Analyzer", "Help", "SMZXV4.3"]
     extra_entities = []
     for word in bold_words:
         idx = text.find(word)
@@ -2911,7 +2914,8 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
          colored_button(" Candle Colors", "menu_candle_colors", KeyboardButtonStyle.PRIMARY, "5217911744495624141")],
         [colored_button(" Text Formatter", "menu_text_formatter", KeyboardButtonStyle.PRIMARY, "5282843764451195532"),
          colored_button(" Font Changer", "menu_font_changer", KeyboardButtonStyle.PRIMARY, "6282685788450721937")],
-        [colored_button(" Trend Filter", "menu_trend_filter", KeyboardButtonStyle.SUCCESS, "5316681209026191987")],
+        [colored_button(" Trend Filter", "menu_trend_filter", KeyboardButtonStyle.SUCCESS, "5316681209026191987"),
+         colored_button(" AI Filter", "menu_ai_filter", KeyboardButtonStyle.PRIMARY, "6217370240800527004")],
         [colored_button(" AI Chart Analyzer", "menu_chart_analyzer", KeyboardButtonStyle.SUCCESS, "5854710508065658472")],
         [colored_button(" Help", "menu_admin", KeyboardButtonStyle.DANGER, "6062294201696000196")],
     ]
@@ -3009,6 +3013,22 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_trend_filter":
         context.user_data['state'] = STATE_TREND_FILTER_INPUT
         sender.send_message(uid, "📉 **Trend Filter**\n\nPaste your signal list (one per line).\nFormat: pair;time;direction (or any readable format).\n\nI will check the previous 1‑hour trend and filter accordingly.")
+    elif data == "menu_ai_filter":
+        context.user_data['state'] = STATE_AI_FILTER_SIGNALS
+        msg = (
+            "🤖 𝚂𝙸𝙾 𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁\n\n"
+            "🔮 Paste your signals below (one per line)\n"
+            "📋 Format: M1;PAIR;HH:MM;DIRECTION\n"
+            "📝 Example:\n"
+            "   M1;GBPJPY-OTC;08:24;CALL\n"
+            "   M1;EURUSD-OTC;09:15;PUT\n\n"
+            "⏰ Use UTC+5 time\n"
+            "💎 AI will classify each as WIN or LOSS\n\n"
+            "📌 Paste your signals now..."
+        )
+        entities = build_custom_emoji_entities(msg)
+        await query.message.reply_text(msg, entities=entities)
+        return
     elif data == "menu_chart_analyzer":
         context.user_data['state'] = STATE_CHART_ANALYZER
         context.user_data['uid'] = uid
@@ -3688,6 +3708,21 @@ async def global_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         result = process_trend_filter(uid, text)
         sender.send_message(uid, result)
         context.user_data['state'] = None
+    elif state == STATE_AI_FILTER_SIGNALS:
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        if not lines:
+            sender.send_message(uid, "❌ No signals received. Paste your signals (one per line).")
+            return
+        context.user_data['ai_filter_signals'] = lines
+        context.user_data['state'] = STATE_AI_FILTER_CONFIDENCE
+        conf_buttons = [
+            [colored_button(" 🟢 Low (Baixa)", "aifilter_conf_Baixa", KeyboardButtonStyle.SUCCESS, "6145553439809084250"),
+             colored_button(" 🟡 Medium (Média)", "aifilter_conf_Média", KeyboardButtonStyle.PRIMARY, "6145553439809084250")],
+            [colored_button(" 🔴 High (Alta)", "aifilter_conf_Alta", KeyboardButtonStyle.DANGER, "6145553439809084250")],
+        ]
+        msg = f"✅ Got {len(lines)} signals!\n\n💎 Select AI confidence level:"
+        entities = build_custom_emoji_entities(msg)
+        await update.message.reply_text(msg, entities=entities, reply_markup=InlineKeyboardMarkup(conf_buttons))
     elif state == STATE_FORMATTER_INPUT:
         lines = [l.strip() for l in text.split('\n') if l.strip()]
         if not lines:
@@ -3885,6 +3920,32 @@ async def smz_pair_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(msg, entities=entities)
         threading.Thread(target=run_smz_hacking_mode, args=(uid, days, start, end, tf, pairs_list), daemon=True).start()
 
+async def aifilter_conf_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    uid = query.from_user.id
+    if not is_authorized(uid):
+        await query.answer("⛔ Access denied.", show_alert=True)
+        return
+    await query.answer()
+    data = query.data
+    confidence = data.replace("aifilter_conf_", "")
+    signals = context.user_data.get('ai_filter_signals', [])
+    if not signals:
+        await query.message.reply_text("❌ No signals found. Please start again from AI Filter.")
+        context.user_data['state'] = None
+        return
+
+    tf = "M1"
+    parts = signals[0].split(";")
+    if len(parts) >= 1 and parts[0].upper().startswith("M"):
+        tf = parts[0].upper()
+
+    context.user_data['state'] = None
+    msg = f"🤖 𝙰𝙸 𝙵𝚒𝚕𝚝𝚎𝚛 𝚜𝚝𝚊𝚛𝚝𝚎𝚍!\n📊 Signals: {len(signals)}\n💎 Confidence: {confidence}\n⏳ Processing...\n\n🔥 Please wait..."
+    entities = build_custom_emoji_entities(msg)
+    await query.message.reply_text(msg, entities=entities)
+    threading.Thread(target=run_ai_filter, args=(uid, signals, confidence, tf), daemon=True).start()
+
 async def font_style_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = query.from_user.id
@@ -3913,6 +3974,129 @@ async def font_style_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text("✅ Sans‑Serif Mono applied!")
         await context.bot.send_message(chat_id=uid, text=formatted)
     context.user_data['state'] = None
+
+# ══════════════ SIO AI FILTER ══════════════
+AI_FILTER_URL = "https://sio.tools/quotex/ia-filter"
+AI_FILTER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Content-Type": "application/json",
+    "Referer": "https://sio.tools/",
+}
+
+def _ai_filter_time_user_to_api(time_str, user_tz=5, api_tz=-3):
+    try:
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        user_dt = datetime.strptime(f"{today.date()} {time_str}", "%Y-%m-%d %H:%M")
+        api_dt = user_dt - timedelta(hours=(user_tz - api_tz))
+        return api_dt.strftime("%H:%M")
+    except:
+        return time_str
+
+def _ai_filter_time_api_to_user(time_str, user_tz=5, api_tz=-3):
+    try:
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        api_dt = datetime.strptime(f"{today.date()} {time_str}", "%Y-%m-%d %H:%M")
+        user_dt = api_dt + timedelta(hours=(user_tz - api_tz))
+        return user_dt.strftime("%H:%M")
+    except:
+        return time_str
+
+def _convert_signals_user_to_api(signals):
+    converted = []
+    for sig in signals:
+        parts = sig.split(";")
+        if len(parts) >= 4:
+            parts[2] = _ai_filter_time_user_to_api(parts[2])
+            converted.append(";".join(parts))
+        else:
+            converted.append(sig)
+    return converted
+
+def _convert_signals_api_to_user(signals):
+    converted = []
+    for sig in signals:
+        parts = sig.split(";")
+        if len(parts) >= 4:
+            parts[2] = _ai_filter_time_api_to_user(parts[2])
+            converted.append(";".join(parts))
+        else:
+            converted.append(sig)
+    return converted
+
+def run_ai_filter(uid, raw_signals, confidence, timeframe):
+    api_signals = _convert_signals_user_to_api(raw_signals)
+
+    payload = {
+        "broker": "quotex",
+        "confidence": confidence,
+        "signals": api_signals,
+        "timeframe": timeframe
+    }
+
+    try:
+        resp = requests.post(AI_FILTER_URL, headers=AI_FILTER_HEADERS, json=payload, timeout=30)
+        if resp.status_code != 200:
+            sender.send_message(uid, f"❌ AI Filter error: {resp.status_code}")
+            return
+        data = resp.json()
+    except Exception as e:
+        sender.send_message(uid, f"❌ Connection error: {e}")
+        return
+
+    wins_api = data.get("signals", [])
+    losses_api = data.get("loss_list", [])
+
+    wins = _convert_signals_api_to_user(wins_api)
+    losses = _convert_signals_api_to_user(losses_api)
+
+    header = (
+        "❀° ┄────────=─────────╮\n"
+        "   🤖 𝚂𝙸𝙾 𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁 🤖\n"
+        "╰────────=───=─────┄ °❀\n\n"
+        f"📊 Total: {len(raw_signals)} signals\n"
+        f"💎 Confidence: {confidence}\n"
+        f"⏳ Timeframe: {timeframe}\n"
+        f"⏰ Timezone: UTC+5\n\n"
+    )
+
+    win_section = "┏───♡─────────── ⊹˚───┓\n"
+    win_section += f"🏆 𝙰𝙸 𝙰𝙲𝙲𝙴𝙿𝚃𝙴𝙳 ({len(wins)}):\n\n"
+    if wins:
+        for sig in wins:
+            parts = sig.split(";")
+            if len(parts) >= 4:
+                direction = parts[3].strip().upper()
+                emoji = "📈" if direction == "CALL" else "📉"
+                win_section += f"{emoji} {sig}\n"
+            else:
+                win_section += f"📈 {sig}\n"
+    else:
+        win_section += "   No winning signals\n"
+    win_section += "\n┗───˚⊹ ─────────♡───┛\n\n"
+
+    loss_section = "┏───💀─────────── ⊹˚───┓\n"
+    loss_section += f"💀 𝙰𝙸 𝚁𝙴𝙹𝙴𝙲𝚃𝙴𝙳 ({len(losses)}):\n\n"
+    if losses:
+        for sig in losses:
+            parts = sig.split(";")
+            if len(parts) >= 4:
+                direction = parts[3].strip().upper()
+                emoji = "📈" if direction == "CALL" else "📉"
+                loss_section += f"❌ {sig}\n"
+            else:
+                loss_section += f"❌ {sig}\n"
+    else:
+        loss_section += "   No losing signals\n"
+    loss_section += "\n┗───˚⊹ ─────────💀───┛\n\n"
+
+    footer = "✨ ©OWNER @Rohailtrader ✨"
+
+    full_msg = header + win_section + loss_section + footer
+    if len(full_msg) > 4000:
+        sender.send_message(uid, header + win_section)
+        sender.send_message(uid, loss_section + footer)
+    else:
+        sender.send_message(uid, full_msg)
 
 # ══════════════ AI CHART ANALYZER (OpenRouter Vision API) ══════════════
 import io as _io
@@ -4244,6 +4428,7 @@ def main():
     app.add_handler(CallbackQueryHandler(smz_pair_callback, pattern="^smz_pair_"))
     app.add_handler(CallbackQueryHandler(smz_pair_callback, pattern="^smz_pickpair_"))
     app.add_handler(CallbackQueryHandler(smz_pair_callback, pattern="^smz_pairpage_"))
+    app.add_handler(CallbackQueryHandler(aifilter_conf_callback, pattern="^aifilter_conf_"))
     app.add_handler(CallbackQueryHandler(font_style_callback, pattern="^font_"))
     app.add_handler(CommandHandler("continue", continue_cmd))
     app.add_handler(CommandHandler("stop", stop_cmd))

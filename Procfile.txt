@@ -1,1 +1,1 @@
-web: python aimode4.py
+web: python aitest21.py

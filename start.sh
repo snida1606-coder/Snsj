@@ -1,2 +1,2 @@
 #!/bin/bash
-python aimode4.py
+python aitest21.py

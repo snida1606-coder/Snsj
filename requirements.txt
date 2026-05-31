@@ -5,3 +5,4 @@ pillow
 colorama
 flask
 google-generativeai
+websockets

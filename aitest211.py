@@ -6232,6 +6232,18 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("⛔ Access denied. Contact Admin to get access.", show_alert=True)
         return
 
+    if data == "fut_strategy_1":
+        context.user_data['state'] = STATE_FUT_MIN_CONF
+        sender.send_message(uid, "😈 Enter minimum confidence % (0-100):")
+        return
+
+    elif data == "fut_strategy_2":
+        context.user_data["smz_step"] = "start_time"
+        msg = "⏰ 𝙴𝚗𝚝𝚎𝚛 𝚜𝚝𝚊𝚛𝚝 𝚝𝚒𝚖𝚎 (𝙷𝙷:𝙼𝙼, 𝚄𝚃𝙲+𝟻):\n📝 𝙴𝚡𝚊𝚖𝚙𝚕𝚎: 09:00"
+        entities = build_custom_emoji_entities(msg)
+        await query.message.reply_text(msg, entities=entities)
+        return
+
     # ==================== REST OF YOUR MENU (including Auto Trade) ====================
     if data == "auto_trade_start":
         await auto_trade_start(update, context)

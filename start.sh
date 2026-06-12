@@ -1,2 +1,2 @@
 #!/bin/bash
-python aitest21.py
+python aitest211.py

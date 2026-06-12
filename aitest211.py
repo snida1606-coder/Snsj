@@ -2881,8 +2881,95 @@ class TelegramSender:
             return await self.client.send_file(chat_id, file_path, caption=caption, formatting_entities=entities, force_document=False, supports_streaming=True)
         return self._run_async(_send())
 
+# ====================== TELEGRAM SENDER (Bot Token) ======================
+class TelegramSender:
+    def __init__(self):
+        self.client = None
+        self.loop = None
+        self.ready = False
 
-# ══════════════ USER TELEGRAM SENDER (Premium account via StringSession) ══════════════
+    def start_with_bot_token(self, api_id, api_hash, bot_token):
+        async def init():
+            self.client = TelegramClient('finorix_session', api_id, api_hash)
+            await self.client.start(bot_token=bot_token)
+            self.ready = True
+            print(f"{Fore.GREEN}[✓] Telethon ready.{Style.RESET_ALL}")
+            while True:
+                await asyncio.sleep(60)
+
+        def run_loop():
+            if sys.platform == 'win32':
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+            self.loop.run_until_complete(init())
+            self.loop.run_forever()
+
+        t = threading.Thread(target=run_loop, daemon=True)
+        t.start()
+        timeout = 30
+        start_time = time.time()
+        while not self.ready and time.time() - start_time < timeout:
+            time.sleep(0.5)
+        if not self.ready:
+            raise RuntimeError("Telethon init timeout")
+
+    def _run_async(self, coro, timeout=30):
+        if not self.ready:
+            return None
+        future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+        return future.result(timeout=timeout)
+
+    def _build_entities(self, text, add_bold=False):
+        entities = []
+        offset = 0
+        for ch in text:
+            clen = len(ch.encode('utf-16-le')) // 2
+            eid = PREMIUM_EMOJI_IDS.get(ch) or FORMAT2_EMOJI_IDS.get(ch)
+            if eid:
+                entities.append(TelethonCustomEmoji(offset=offset, length=clen, document_id=eid))
+            offset += clen
+        if add_bold and text:
+            total_len = len(text.encode('utf-16-le')) // 2
+            entities.append(TelethonBold(offset=0, length=total_len))
+        if entities:
+            print(f"✅ Built {len(entities)} custom emoji entities for message.")
+        else:
+            print("⚠️ No custom emoji entities built.")
+        return entities
+
+    def send_message(self, chat_id, text, buttons=None):
+        async def _send():
+            entities = self._build_entities(text, add_bold=False)
+            if buttons:
+                return await self.client.send_message(chat_id, text, formatting_entities=entities, buttons=buttons)
+            return await self.client.send_message(chat_id, text, formatting_entities=entities)
+        return self._run_async(_send())
+
+    def send_bold_message(self, chat_id, text, buttons=None):
+        async def _send():
+            entities = self._build_entities(text, add_bold=True)
+            if buttons:
+                return await self.client.send_message(chat_id, text, formatting_entities=entities, buttons=buttons)
+            return await self.client.send_message(chat_id, text, formatting_entities=entities)
+        return self._run_async(_send())
+
+    def edit_message(self, chat_id, msg_id, text, buttons=None):
+        async def _edit():
+            entities = self._build_entities(text, add_bold=False)
+            if buttons:
+                return await self.client.edit_message(chat_id, msg_id, text, formatting_entities=entities, buttons=buttons)
+            return await self.client.edit_message(chat_id, msg_id, text, formatting_entities=entities)
+        return self._run_async(_edit())
+
+    def send_file(self, chat_id, file_path, caption):
+        async def _send():
+            entities = self._build_entities(caption, add_bold=False)
+            return await self.client.send_file(chat_id, file_path, caption=caption, formatting_entities=entities, force_document=False, supports_streaming=True)
+        return self._run_async(_send())
+
+
+# ====================== USER TELEGRAM SENDER (Premium account via StringSession) ======================
 class UserTelegramSender:
     def __init__(self):
         self.client = None
@@ -2928,7 +3015,7 @@ class UserTelegramSender:
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         return future.result(timeout=timeout)
 
-    def _build_entities(self, text):
+    def _build_entities(self, text, add_bold=False):
         entities = []
         offset = 0
         for ch in text:
@@ -2937,6 +3024,9 @@ class UserTelegramSender:
             if eid:
                 entities.append(TelethonCustomEmoji(offset=offset, length=clen, document_id=eid))
             offset += clen
+        if add_bold and text:
+            total_len = len(text.encode('utf-16-le')) // 2
+            entities.append(TelethonBold(offset=0, length=total_len))
         if entities:
             print(f"✅ Built {len(entities)} custom emoji entities for message.")
         else:
@@ -2948,7 +3038,16 @@ class UserTelegramSender:
             print(f"{Fore.RED}[!] User Telegram not ready.{Style.RESET_ALL}")
             return False
         async def _send():
-            entities = self._build_entities(text)
+            entities = self._build_entities(text, add_bold=False)
+            await self.client.send_message(chat_id, text, formatting_entities=entities)
+        return self._run_async(_send())
+
+    def send_bold_message(self, chat_id, text):
+        if not self.ready:
+            print(f"{Fore.RED}[!] User Telegram not ready.{Style.RESET_ALL}")
+            return False
+        async def _send():
+            entities = self._build_entities(text, add_bold=True)
             await self.client.send_message(chat_id, text, formatting_entities=entities)
         return self._run_async(_send())
 
@@ -2957,7 +3056,7 @@ class UserTelegramSender:
             print(f"{Fore.RED}[!] User Telegram not ready.{Style.RESET_ALL}")
             return False
         async def _send():
-            entities = self._build_entities(caption)
+            entities = self._build_entities(caption, add_bold=False)
             await self.client.send_file(chat_id, file_path, caption=caption, formatting_entities=entities, force_document=False, supports_streaming=True)
         return self._run_async(_send())
 
@@ -2965,6 +3064,7 @@ class UserTelegramSender:
 # ========== CREATE INSTANCES ==========
 sender = TelegramSender()
 user_sender = UserTelegramSender()
+
 
 
 def progress_bar_text(pct: int) -> str:

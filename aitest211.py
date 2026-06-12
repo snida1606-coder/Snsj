@@ -2808,29 +2808,37 @@ def run_smz_hacking_mode(uid, days, start_time, end_time, tf, selected_pairs):
 # ══════════════ TELEGRAM SENDER (Telethon) ══════════════
 
 
-class TelegramSender:
+# ====================== USER TELEGRAM SENDER (StringSession, premium emojis) ======================
+class UserTelegramSender:
     def __init__(self):
         self.client = None
         self.loop = None
         self.ready = False
 
-    def start_with_bot_token(self, api_id, api_hash, bot_token):
+    def start(self):
+        from telethon.sessions import StringSession
+        import os
+
+        session_string = os.environ.get("TG_SESSION_STRING")
+        if not session_string:
+            raise RuntimeError("TG_SESSION_STRING environment variable not set!")
+
         async def init():
-            self.client = TelegramClient('finorix_session', api_id, api_hash)
-            await self.client.start(bot_token=bot_token)
+            self.client = TelegramClient(StringSession(session_string), int(USER_API_ID), USER_API_HASH)
+            await self.client.start()
             self.ready = True
-            print(f"{Fore.GREEN}[✓] Telethon ready.{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}[✓] User Telegram (Premium) ready – using StringSession.{Style.RESET_ALL}")
             while True:
                 await asyncio.sleep(60)
 
         def run_loop():
             if sys.platform == 'win32':
-                asyncio.set_event_loop_policy(
-                    asyncio.WindowsSelectorEventLoopPolicy())
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
             self.loop.run_until_complete(init())
             self.loop.run_forever()
+
         t = threading.Thread(target=run_loop, daemon=True)
         t.start()
         timeout = 30
@@ -2838,7 +2846,7 @@ class TelegramSender:
         while not self.ready and time.time() - start_time < timeout:
             time.sleep(0.5)
         if not self.ready:
-            raise RuntimeError("Telethon init timeout")
+            raise RuntimeError("User Telegram init timeout")
 
     def _run_async(self, coro, timeout=30):
         if not self.ready:
@@ -2856,37 +2864,31 @@ class TelegramSender:
                 entities.append(TelethonCustomEmoji(
                     offset=offset, length=clen, document_id=eid))
             offset += clen
-        # Debug print - after testing you can remove
         if entities:
             print(f"✅ Built {len(entities)} custom emoji entities for message.")
         else:
             print("⚠️ No custom emoji entities built.")
         return entities
 
-    def send_message(self, chat_id, text, buttons=None):
+    def send_message(self, chat_id, text):
+        if not self.ready:
+            print(f"{Fore.RED}[!] User Telegram not ready.{Style.RESET_ALL}")
+            return False
         async def _send():
             entities = self._build_entities(text)
-            if buttons:
-                return await self.client.send_message(chat_id, text, formatting_entities=entities, buttons=buttons)
-            return await self.client.send_message(chat_id, text, formatting_entities=entities)
+            await self.client.send_message(chat_id, text, formatting_entities=entities)
         return self._run_async(_send())
-
-    def edit_message(self, chat_id, msg_id, text, buttons=None):
-        async def _edit():
-            entities = self._build_entities(text)
-            if buttons:
-                return await self.client.edit_message(chat_id, msg_id, text, formatting_entities=entities, buttons=buttons)
-            return await self.client.edit_message(chat_id, msg_id, text, formatting_entities=entities)
-        return self._run_async(_edit())
 
     def send_file(self, chat_id, file_path, caption):
+        if not self.ready:
+            print(f"{Fore.RED}[!] User Telegram not ready.{Style.RESET_ALL}")
+            return False
         async def _send():
             entities = self._build_entities(caption)
-            return await self.client.send_file(chat_id, file_path, caption=caption, formatting_entities=entities, force_document=False, supports_streaming=True)
+            await self.client.send_file(chat_id, file_path, caption=caption, formatting_entities=entities, force_document=False, supports_streaming=True)
         return self._run_async(_send())
 
-
-sender = TelegramSender()
+user_sender = UserTelegramSender() 
 
 
 def progress_bar_text(pct: int) -> str:

@@ -2887,7 +2887,8 @@ class UserTelegramSender:
             entities = self._build_entities(caption)
             await self.client.send_file(chat_id, file_path, caption=caption, formatting_entities=entities, force_document=False, supports_streaming=True)
         return self._run_async(_send())
-
+        
+sender = TelegramSender()
 user_sender = UserTelegramSender() 
 
 

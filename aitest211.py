@@ -6314,6 +6314,22 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(msg, entities=entities)
         return
 
+    elif data == "menu_ai_filter":
+        context.user_data['state'] = STATE_AI_FILTER_SIGNALS
+        context.user_data['uid'] = uid
+        msg = (
+            "🤖 𝙰𝙸 𝙵𝙸𝙻𝚃𝙴𝚁 \n\n"
+            "📋 Paste your signal list (one per line).\n"
+            "Supports formats like:\n"
+            "• M1 USDDZD-OTC 16:15 BUY\n"
+            "• USDINR-OTC;16:19;PUT\n"
+            "• any flexible format\n\n"
+            "⏳ I will analyze each signal using Latest Ai Models."
+        )
+        entities = build_custom_emoji_entities(msg)
+        await query.message.reply_text(msg, entities=entities)
+        return
+
     elif data == "menu_utc_converter":
         context.user_data['state'] = STATE_UTC_ORIG_OFFSET
         sender.send_message(uid, "🕐 Enter original timezone offset (e.g., +0 for UTC, +5 for Pakistan):")

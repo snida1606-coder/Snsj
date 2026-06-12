@@ -1000,7 +1000,9 @@ USER_API_ID = os.environ.get("USER_API_ID")
 USER_API_HASH = os.environ.get("USER_API_HASH")
 USER_PHONE = os.environ.get("USER_PHONE")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
+
+SUPABASE_URL = "https://jklibjyjzimcjlpvskvw.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbGlianlqemltY2pscHZza3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTE0NzEsImV4cCI6MjA4OTY4NzQ3MX0.aPMtnplXCpMenfdpDAPFcdMd4ccptM2L3C5oCWWC4X4"
 
 def is_authorized(uid: int) -> bool:
     headers = {

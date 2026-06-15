@@ -7233,18 +7233,17 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     elif data == "menu_analysis":
-        context.user_data['uid'] = uid
-        context.user_data['state'] = STATE_CHOOSE_TARGET
-        msg = "📊 𝚂𝚎𝚕𝚎𝚌𝚝 𝚃𝚊𝚛𝚐𝚎𝚝:\n\n"
-        buttons = [
-            [colored_button("🤖 IN BOT", "target_in_bot", KeyboardButtonStyle.SUCCESS, "5314391089514291948")],
-            [colored_button("📢 OTH CHANNEL", "target_oth_channel", KeyboardButtonStyle.PRIMARY, "6145248943807667330")],
-        ]
+        # Direct strategy selection – no IN BOT / OTH CHANNEL step
+        text = "🤖 𝚂𝙴𝙻𝙴𝙲𝚃 𝚂𝚃𝚁𝙰𝚃𝙴𝙶𝚈 (1-6):"
+        buttons = []
+        for i in range(1, 7):
+            style = KeyboardButtonStyle.SUCCESS if i % 2 else KeyboardButtonStyle.PRIMARY
+            buttons.append([InlineKeyboardButton(f"Strategy {i}", callback_data=f"strat_{i}", style=style)])
         markup = InlineKeyboardMarkup(buttons)
-        entities = build_custom_emoji_entities(msg)
-        await query.message.reply_text(msg, entities=entities, reply_markup=markup)
+        entities = build_custom_emoji_entities(text)
+        await query.message.reply_text(text, entities=entities, reply_markup=markup)
         return
-
+   
     elif data == "menu_checker2":
         context.user_data['state'] = STATE_CHECKER2_UTC
         msg = "🌐 𝙲𝙷𝙴𝙲𝙺𝙴𝚁 2.0 (𝚂𝙼𝚉)\n\n⏰ 𝚂𝚎𝚕𝚎𝚌𝚝 𝚢𝚘𝚞𝚛 𝚄𝚃𝙲 𝚘𝚏𝚏𝚜𝚎𝚝:"

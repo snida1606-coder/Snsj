@@ -988,7 +988,6 @@ USER_API_ID = os.environ.get("USER_API_ID")
 USER_API_HASH = os.environ.get("USER_API_HASH")
 USER_PHONE = os.environ.get("USER_PHONE")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
 
 def is_authorized(uid: int) -> bool:
     headers = {

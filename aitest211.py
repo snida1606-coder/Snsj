@@ -10370,7 +10370,7 @@ async def global_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     elif state == STATE_CHECKER2_SIGNALS:
         context.user_data['state'] = None
-        sender.send_message(uid, "⏳ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚒𝚗𝚐 𝚜𝚒𝚐𝚗𝚊𝚕𝚜 𝚠𝚒𝚝𝚑 𝚂𝙸𝙾.𝚝𝚘𝚘𝚕𝚜...")
+        sender.send_message(uid, "⏳ 𝙿𝚛𝚘𝚌𝚎𝚜𝚜𝚒𝚗𝚐 𝚜𝚒𝚐𝚗𝚊𝚕𝚜 𝚠𝚒𝚝𝚑 SMZXAPI...")
         threading.Thread(target=_run_sio_checker_thread, args=(uid, context, text), daemon=True).start()
         return
 

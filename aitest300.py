@@ -350,6 +350,22 @@ class TradoWixClient:
                 self.balance = data.get("balance", {}) if data else {}
                 for cb in self._balance_callbacks:
                     self._safe_call(cb, self.balance)
+                # FIX: TradoWix now sends trade results via balanceUpdate with reason="tradeResult"
+                # instead of a separate "tradeResult" message type
+                if data and data.get("reason") == "tradeResult":
+                    trade_id = data.get("tradeId")
+                    if trade_id:
+                        # Emit trade result callback with tradeId and new balance
+                        result_data = {
+                            "tradeId": trade_id,
+                            "balance": self.balance,
+                            "status": "settled"
+                        }
+                        # Also update the _results dict for backward compatibility
+                        if hasattr(self, '_results') and self._results is not None:
+                            self._results[trade_id] = result_data
+                        for cb in self._trade_result_callbacks:
+                            self._safe_call(cb, result_data)
 
             elif msg_type == "candleHistory":
                 if data:
@@ -400,6 +416,19 @@ class TradoWixClient:
                 if data:
                     for cb in self._trade_result_callbacks:
                         self._safe_call(cb, data)
+
+            # FIX: TradoWix now sends trade results as "tradeResultsBatch"
+            elif msg_type == "tradeResultsBatch":
+                if data and isinstance(data, list):
+                    for result_item in data:
+                        tid = result_item.get("tradeId")
+                        if tid:
+                            # Update _results dict for backward compatibility
+                            if hasattr(self, '_results') and self._results is not None:
+                                self._results[tid] = result_item
+                            # Call trade result callbacks
+                            for cb in self._trade_result_callbacks:
+                                self._safe_call(cb, result_item)
 
             elif msg_type == "tradeFailed":
                 error = data.get(

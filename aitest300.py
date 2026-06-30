@@ -10432,14 +10432,17 @@ def _auto_classify(res, side):
         profit > 0 -> win,  profit < 0 -> loss,  profit == 0 -> tie (refund).
     """
     logger.info(f"[DEBUG _auto_classify] res={res}, side={side}")
+    logger.info(f"[DEBUG _auto_classify] res keys={list(res.keys()) if isinstance(res, dict) else 'not dict'}")
 
     # 1) profit is the most reliable signal
+    profit = res.get("profit")
+    logger.info(f"[DEBUG _auto_classify] profit raw={profit}, type={type(profit)}")
     try:
-        profit = float(res.get("profit"))
+        profit = float(profit)
     except (TypeError, ValueError):
         profit = None
     
-    logger.info(f"[DEBUG _auto_classify] profit={profit}")
+    logger.info(f"[DEBUG _auto_classify] profit after conversion={profit}")
     
     if profit is not None:
         if profit > 0:
@@ -10453,7 +10456,7 @@ def _auto_classify(res, side):
 
     # 2) explicit result field (string or numeric)
     rc = res.get("result")
-    logger.info(f"[DEBUG _auto_classify] result field={rc}")
+    logger.info(f"[DEBUG _auto_classify] result field={rc}, type={type(rc)}")
     if isinstance(rc, str):
         s = rc.strip().lower()
         if s in ("win", "won"):
@@ -10462,10 +10465,14 @@ def _auto_classify(res, side):
             return "loss"
         if s in ("tie", "draw", "equal", "refund"):
             return "tie"
+    # Numeric result codes: 1=WIN, 2=LOSS, 3=TIE/REFUND
     if rc == 1:
         return "win"
-    if rc == 2:                       # numeric 2 == LOSS on this broker
+    if rc == 2:
         return "loss"
+    if rc == 3:
+        logger.info(f"[DEBUG _auto_classify] result=3, returning TIE")
+        return "tie"
 
     # 3) price-based fallback (flat == loss on this broker)
     op = res.get("openPrice")

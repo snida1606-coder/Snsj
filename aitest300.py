@@ -419,14 +419,13 @@ class TradoWixClient:
 
             # FIX: TradoWix now sends trade results as "tradeResultsBatch"
             elif msg_type == "tradeResultsBatch":
+                logger.debug(f"[DEBUG] tradeResultsBatch received: {msg}")
                 if data and isinstance(data, list):
                     for result_item in data:
                         tid = result_item.get("tradeId")
                         if tid:
-                            # Update _results dict for backward compatibility
-                            if hasattr(self, '_results') and self._results is not None:
-                                self._results[tid] = result_item
-                            # Call trade result callbacks
+                            logger.info(f"[TRADE_RESULT] tradeId={tid}, result={result_item.get('result')}, profit={result_item.get('profit')}")
+                            # Call trade result callbacks first
                             for cb in self._trade_result_callbacks:
                                 self._safe_call(cb, result_item)
 
@@ -10422,9 +10421,6 @@ def _auto_acct_balance(trader):
 
 
 def _auto_classify(res, side):
-
-    pass
-
     """Decode a broker tradeResult into 'win' | 'loss' | 'tie'.
 
     Confirmed from LIVE demo data, the broker is inconsistent: the `result`
@@ -10522,6 +10518,8 @@ def auto_trade_loop(trader, context):
         tid = data.get("tradeId") or data.get("id")
         if tid:
             trader._results[tid] = data
+            # DEBUG: log what we received
+            logger.info(f"[DEBUG _on_res] tid={tid}, result={data.get('result')}, profit={data.get('profit')}, direction={data.get('direction')}")
 
     client.on_trade_opened(_on_open)
     client.on_trade_result(_on_res)
@@ -10838,6 +10836,7 @@ def auto_trade_loop(trader, context):
                     continue
 
                 outcome = _auto_classify(res, side)
+                logger.info(f"[DEBUG] First trade outcome={outcome}, mtg_enabled={trader.mtg_enabled}")
 
                 if outcome != "loss":
                     # win / tie → refresh real balance (credit lands via
@@ -10871,6 +10870,7 @@ def auto_trade_loop(trader, context):
                 trader.balance = _auto_acct_balance(trader)
                 pnl = trader.balance - trader.starting_balance
 
+                logger.info(f"[DEBUG] Processing LOSS, mtg_enabled={trader.mtg_enabled}")
                 if not trader.mtg_enabled:
                     # no recovery step → this IS the episode loss: count +
                     # announce it

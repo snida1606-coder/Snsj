@@ -10431,20 +10431,29 @@ def _auto_classify(res, side):
     `profit` is always present and unambiguous, so we trust it first:
         profit > 0 -> win,  profit < 0 -> loss,  profit == 0 -> tie (refund).
     """
+    logger.info(f"[DEBUG _auto_classify] res={res}, side={side}")
+
     # 1) profit is the most reliable signal
     try:
         profit = float(res.get("profit"))
     except (TypeError, ValueError):
         profit = None
+    
+    logger.info(f"[DEBUG _auto_classify] profit={profit}")
+    
     if profit is not None:
         if profit > 0:
+            logger.info(f"[DEBUG _auto_classify] RETURNING: win (profit={profit})")
             return "win"
         if profit < 0:
+            logger.info(f"[DEBUG _auto_classify] RETURNING: loss (profit={profit})")
             return "loss"
+        logger.info(f"[DEBUG _auto_classify] RETURNING: tie (profit=0)")
         return "tie"
 
     # 2) explicit result field (string or numeric)
     rc = res.get("result")
+    logger.info(f"[DEBUG _auto_classify] result field={rc}")
     if isinstance(rc, str):
         s = rc.strip().lower()
         if s in ("win", "won"):
@@ -10461,11 +10470,17 @@ def _auto_classify(res, side):
     # 3) price-based fallback (flat == loss on this broker)
     op = res.get("openPrice")
     cp = res.get("closePrice")
+    logger.info(f"[DEBUG _auto_classify] openPrice={op}, closePrice={cp}")
     if op is not None and cp is not None:
         if cp > op:
-            return "win" if side == "call" else "loss"
+            result = "win" if side == "call" else "loss"
+            logger.info(f"[DEBUG _auto_classify] RETURNING: {result} (price-based)")
+            return result
         if cp < op:
-            return "win" if side == "put" else "loss"
+            result = "win" if side == "put" else "loss"
+            logger.info(f"[DEBUG _auto_classify] RETURNING: {result} (price-based)")
+            return result
+    logger.info(f"[DEBUG _auto_classify] RETURNING: loss (fallback)")
     return "loss"
 
 

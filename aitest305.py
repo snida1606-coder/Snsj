@@ -1019,12 +1019,11 @@ SUPABASE_URL = "https://jklibjyjzimcjlpvskvw.supabase.co"
 # ══════════════ CONFIG ═
 import os
 
-BOT_TOKEN = "8668947816:AAE-koL0ISj_uZknbm4sxQIp-kTW__033Go"
-USER_API_ID = 14017996
-USER_API_HASH = "c04b4a519be12de0cf2826fde7c0ba9a"
-USER_PHONE = "+923023156905"
-OPENROUTER_API_KEY = "yahan_apni_openrouter_key_dalo"
-TG_SESSION_STRING = ""
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+USER_API_ID = os.environ.get("USER_API_ID")
+USER_API_HASH = os.environ.get("USER_API_HASH")
+USER_PHONE = os.environ.get("USER_PHONE")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 
 OWNER_ID = 8520206066
 

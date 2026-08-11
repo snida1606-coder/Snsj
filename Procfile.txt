@@ -1,1 +1,0 @@
-web: python aitest211.py

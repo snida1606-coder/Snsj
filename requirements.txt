@@ -4,5 +4,9 @@ requests
 pillow
 colorama
 flask
+numpy
 google-generativeai
 websockets
+beautifulsoup4
+html5lib
+lxml
